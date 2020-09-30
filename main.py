@@ -73,26 +73,59 @@ def save_to_drive():
     try:
         # Log into Google Drive account
         g_login = GoogleAuth()
-        # g_login.LocalWebserverAuth()
         drive = GoogleDrive(g_login)
 
+        file_list = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()
+
+        # If root folder doesn't exist, create it
+        root_folder_id = get_drive_id(file_list, parent_drive_dir)
+        if root_folder_id == None:
+            root_folder = drive.CreateFile({
+                'title': parent_drive_dir,
+                'mimeType': 'application/vnd.google-apps.folder'
+            })
+            root_folder.Upload()
+            root_folder_id = get_drive_id(file_list, parent_drive_dir)
+
+        file_list1 = drive.ListFile({
+            'q': "'%s' in parents and trashed=false" % root_folder_id}).GetList()
+
+        # Create date stamped folder
+        date_str = str(date)
+        date_folder_id = get_drive_id(file_list1, date_str)
+        if date_folder_id == None:
+            date_folder = drive.CreateFile({
+                'title': date_str,
+                'parents': [{"id": root_folder_id}],
+                'mimeType': 'application/vnd.google-apps.folder'
+            })
+            date_folder.Upload()
+            date_folder_id = get_drive_id(file_list1, date_str)
+
+        # Upload images
         for _, _, files in os.walk(dir_processed):
             for filename in files:
                 path = os.path.join(dir_processed, filename)
-                print(path)
+                print('Uploading: ' + path)
 
                 # Upload to Drive
                 file1 = drive.CreateFile({
-                    'title': filename, 
+                    'title': filename,
+                    'parents': [{'id': date_folder_id}],
                     'mimeType': 'image/jpg'
                 })
                 file1.SetContentFile(path)
                 file1.Upload()
 
-        return { 'success': True }
     except Exception as e:
         print('ERROR: ', str(e))
-        return { 'success': False }
+
+def get_drive_id(file_list, filename):
+    for folder in file_list:
+        if folder['title'] == filename:
+            return folder['id']
+    
+    return None
 
 def parse_args():
     print('Parsing arguments...')
@@ -123,5 +156,5 @@ def parse_args():
 
 if __name__ == '__main__':
     parse_args()
-    # process_images()
+    process_images()
     save_to_drive()
