@@ -1,70 +1,63 @@
 import argparse
+import io
 import os
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from PIL import Image
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 
 WHITE = (255, 255, 255)
 
-'''
-Directories
-'''
-src_dir = "/Users/jesse/Desktop/src_images/"
-dst_dir = "/Users/jesse/Documents/"
-
+src_dir = ''
+dst_dir = ''
+parent_drive_dir = 'Insta'
 padding = 0
 
-class Orientation(Enum):
-    LANDSCAPE = 1
-    PORTRAIT = 2
-
-def main():
-    print("Processing images...")
-    for _, _, files in os.walk(src_dir):
+def process_images():
+    for root, _, files in os.walk(src_dir):
         for filename in files:
-            process_image(filename)
+            process_image(root, filename)
             # delete_src(src_dir + filename)
 
-def process_image(filename):
-    src = Image.open(src_dir + filename)
-    src_size = src.size
+def process_image(dir, filename):
+    print('Processing: ' + filename)
 
-    # Determine whether the image is portrait/landscape
-    orientation = Orientation.LANDSCAPE
-    max_dimmension = src_size[0]
+    # Load source image
+    src_path = os.path.join(dir, filename)
+    src_img = Image.open(src_path)
+    src_size = src_img.size
+
+    # Determine the greatest dimmension to use for the 
+    # background size + padding
+    max_dimmension = src_size[0] + padding
     if src_size[0] < src_size[1]:
-        orientation = Orientation.PORTRAIT
-        max_dimmension = src_size[1]
+        max_dimmension = src_size[1] + padding
 
-    out_width = max_dimmension
-    out_height = max_dimmension
-    if orientation == Orientation.LANDSCAPE:
-        out_width = out_width + padding
-    else:
-        out_height = out_height + padding
-    out_size = (out_width, out_height)
-
+    # Create background
+    out_size = (max_dimmension + padding, max_dimmension + padding)
     out_img = Image.new("RGB", out_size, WHITE)
 
+    # Center source image on background
     mid_x = int((out_size[0] - src_size[0]) / 2)
     mid_y = int((out_size[1] - src_size[1]) / 2)
-    out_img.paste(src, (mid_x, mid_y))
+    out_img.paste(src_img, (mid_x, mid_y))
 
-    save(src, out_img, filename)
+    save(src_img, out_img, filename)
 
-def save(src, out, filename):
+def save(src_img, out_img, filename):
     date = datetime.today().strftime('%Y-%m-%d')
 
-    dir_raw = dst_dir + date + "/raw/"
-    dir_processed = dst_dir + date + "/processed/"
+    dir_raw = os.path.join(dst_dir + date, 'raw')
+    dir_processed = os.path.join(dst_dir + date, 'processed')
 
     Path(dir_raw).mkdir(parents=True, exist_ok=True)
     Path(dir_processed).mkdir(parents=True, exist_ok=True)
 
-    # write file
-    src.save(dir_raw + filename)
-    out.save(dir_processed + filename)
+    # Write file
+    src_img.save(os.path.join(dir_raw, filename))
+    out_img.save(os.path.join(dir_processed, filename))
 
 def delete_src(filename):
     os.remove(filename)
@@ -73,27 +66,62 @@ def delete_src(filename):
     if not os.listdir(src_dir):
         os.rmdir(src_dir)
 
-if __name__ == '__main__':
-    # Setup arguments labels
-    parser = argparse.ArgumentParser()
-    parser.add_argument('src', help="The source directory of images to be processed")
-    parser.add_argument('dst', help="The destination directory for images to be saved")
-    parser.add_argument('padding', help="Adds padding beyond the frame of 1:1 frame of the image. Default is no padding")
+def save_to_drive():
+    date = datetime.today().strftime('%Y-%m-%d')
+    dir_processed = os.path.join(dst_dir + date, 'processed')
+
+    try:
+        # Log into Google Drive account
+        g_login = GoogleAuth()
+        # g_login.LocalWebserverAuth()
+        drive = GoogleDrive(g_login)
+
+        for _, _, files in os.walk(dir_processed):
+            for filename in files:
+                path = os.path.join(dir_processed, filename)
+                print(path)
+
+                # Upload to Drive
+                file1 = drive.CreateFile({
+                    'title': filename, 
+                    'mimeType': 'image/jpg'
+                })
+                file1.SetContentFile(path)
+                file1.Upload()
+
+        return { 'success': True }
+    except Exception as e:
+        print('ERROR: ', str(e))
+        return { 'success': False }
+
+def parse_args():
+    print('Parsing arguments...')
+
+    desc = 'Process a directory of images by adding a square background and optional padding'
+    src_help = 'Source directory of images to be processed'
+    dst_help = 'Destination directory for images to be stored'
+    padding_help = 'Additional padding to be added, default = 0'
+
+    # Setup argument labels
+    parser = argparse.ArgumentParser(description=desc)
+    parser.add_argument('src', help=src_help)
+    parser.add_argument('dst', help=dst_help)
+    parser.add_argument('padding', help=padding_help)
     args = parser.parse_args()
 
-    src_dir = args.src.split("=")[1]
-    dst_dir = args.dst.split("=")[1]
-    padding = int(args.padding.split("=")[1])
+    global src_dir, dst_dir, padding
+    src_dir = args.src.split('=')[1]
+    dst_dir = args.dst.split('=')[1]
+    padding = int(args.padding.split('=')[1])
 
-    # Append '/' to directory paths if they dont exist
-    if not src_dir[-1] == '/':
-        src_dir = src_dir + '/'
-    if not dst_dir[-1] == '/':
-        dst_dir = dst_dir + '/'
+    # print(src_dir + '\n' + dst_dir + '\n' + str(padding))
 
-    # Check if there are images available to process
+    # Check if there are images available in the parsed directory
     if not os.listdir(src_dir):
-        print("Aborting... The provided source folder is empty")
+        print('Exiting - The provided source folder is empty')
         exit()
 
-    main()
+if __name__ == '__main__':
+    parse_args()
+    # process_images()
+    save_to_drive()
