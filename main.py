@@ -8,14 +8,33 @@ from PIL import Image
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 
-WHITE = (255, 255, 255)
+import tkinter as tk
+from tkinter import filedialog
+from tkinter import Frame
 
+root = tk.Tk()
+
+# UI State
+src_label_var = tk.StringVar()
+dst_label_var = tk.StringVar()
+padding_label_var = tk.StringVar()
+upload_drive_var = tk.IntVar()
+
+# Directories
 src_dir = ''
 dst_dir = ''
-parent_drive_dir = 'Insta'
-padding = 0
+
+parent_drive_dir = 'Instagram'
+padding = 60
 
 def process_images():
+    src_dir = src_label_var.get()
+    dst_dir = dst_label_var.get()
+
+    print("running...")
+    print("src: " + src_dir)
+    print("dst: " + dst_dir)
+
     for root, _, files in os.walk(src_dir):
         for filename in files:
             process_image(root, filename)
@@ -37,7 +56,7 @@ def process_image(dir, filename):
 
     # Create background
     out_size = (max_dimmension + padding, max_dimmension + padding)
-    out_img = Image.new("RGB", out_size, WHITE)
+    out_img = Image.new("RGB", out_size, (255, 255, 255))
 
     # Center source image on background
     mid_x = int((out_size[0] - src_size[0]) / 2)
@@ -154,7 +173,63 @@ def parse_args():
         print('Exiting - The provided source folder is empty')
         exit()
 
-if __name__ == '__main__':
-    parse_args()
-    process_images()
-    save_to_drive()
+# ----- GUI -----
+
+def setup_gui():
+
+    root.title('Prepare-for-insta')
+    root.geometry("+1000+500")
+    root.resizable(False, False)
+    
+    # Source label
+    src_btn_text = tk.Label(root, text="Source:")
+    src_btn_text.grid(row=0, column=0)
+    # Source path entry
+    src_entry = tk.Entry(root, textvariable=src_label_var)
+    src_entry.grid(row=0, column=1)
+    # Source browse button
+    src_browse_btn = tk.Button(root)
+    src_browse_btn["text"] = "Browse..."
+    src_browse_btn["command"] = set_src
+    src_browse_btn.grid(row=0, column=2, padx=4, pady=4)
+
+    # Destination label
+    dst_btn_text = tk.Label(root, text="Output:")
+    dst_btn_text.grid(row=1, column=0)
+    # Destination path entry
+    dst_entry = tk.Entry(root, textvariable=dst_label_var)
+    dst_entry.grid(row=1, column=1)
+    # Destination browse button
+    dst_browse_btn = tk.Button(root)
+    dst_browse_btn["text"] = "Browse..."
+    dst_browse_btn["command"] = set_dst
+    dst_browse_btn.grid(row=1, column=2)
+
+    # Padding label
+    padding_text = tk.Label(root, text="Padding:")
+    padding_text.grid(row=2, column=0, padx=4, pady=4)
+    # Padding path entry
+    padding_entry = tk.Entry(root, textvariable=padding_label_var)
+    padding_entry.grid(row=2, column=1)
+
+    # Enable Google Drive button
+    drive_btn = tk.Checkbutton(root, text="Upload to Google Drive", variable=upload_drive_var)
+    drive_btn.grid(row=3, column=1)
+
+    # Process button
+    process_btn = tk.Button(root)
+    process_btn["text"] = "Run"
+    process_btn["command"] = process_images
+    process_btn.grid(row=4, padx=4, pady=4)
+
+    root.mainloop()
+
+def set_src():
+    src_dir = filedialog.askdirectory()
+    src_label_var.set(src_dir)
+
+def set_dst():
+    dst_dir = filedialog.askdirectory()
+    dst_label_var.set(dst_dir)
+
+setup_gui()
