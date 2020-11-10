@@ -1,4 +1,3 @@
-import argparse
 import io
 import os
 from datetime import datetime
@@ -17,7 +16,7 @@ root = tk.Tk()
 # UI State
 src_label_var = tk.StringVar()
 dst_label_var = tk.StringVar()
-padding_label_var = tk.StringVar()
+padding_label_var = tk.IntVar()
 upload_drive_var = tk.IntVar()
 
 # Directories
@@ -28,9 +27,10 @@ parent_drive_dir = 'Instagram'
 padding = 60
 
 def process_images():
-    global src_dir, dst_dir
+    global src_dir, dst_dir, padding
     src_dir = src_label_var.get()
     dst_dir = dst_label_var.get()
+    padding = padding_label_var.get()
 
     if not dst_dir.endswith("\\"):
         dst_dir += "\\"
@@ -79,8 +79,6 @@ def save(src_img, out_img, filename):
     Path(dir_processed).mkdir(parents=True, exist_ok=True)
 
     print("saving...")
-    print("dst_dir: " + dst_dir)
-    print("processed: " + os.path.join(dir_processed, filename))
 
     # Write file
     src_img.save(os.path.join(dir_raw, filename))
@@ -154,33 +152,6 @@ def get_drive_id(file_list, filename):
     
     return None
 
-def parse_args():
-    print('Parsing arguments...')
-
-    desc = 'Process a directory of images by adding a square background and optional padding'
-    src_help = 'Source directory of images to be processed'
-    dst_help = 'Destination directory for images to be stored'
-    padding_help = 'Additional padding to be added, default = 0'
-
-    # Setup argument labels
-    parser = argparse.ArgumentParser(description=desc)
-    parser.add_argument('src', help=src_help)
-    parser.add_argument('dst', help=dst_help)
-    parser.add_argument('padding', help=padding_help)
-    args = parser.parse_args()
-
-    global src_dir, dst_dir, padding
-    src_dir = args.src.split('=')[1]
-    dst_dir = args.dst.split('=')[1]
-    padding = int(args.padding.split('=')[1])
-
-    # print(src_dir + '\n' + dst_dir + '\n' + str(padding))
-
-    # Check if there are images available in the parsed directory
-    if not os.listdir(src_dir):
-        print('Exiting - The provided source folder is empty')
-        exit()
-
 # ----- GUI -----
 
 def setup_gui():
@@ -217,6 +188,7 @@ def setup_gui():
     padding_text = tk.Label(root, text="Padding:")
     padding_text.grid(row=2, column=0, padx=4, pady=4)
     # Padding path entry
+    padding_label_var.set(60)
     padding_entry = tk.Entry(root, textvariable=padding_label_var)
     padding_entry.grid(row=2, column=1)
 
@@ -233,11 +205,9 @@ def setup_gui():
     root.mainloop()
 
 def set_src():
-    src_dir = filedialog.askdirectory()
-    src_label_var.set(src_dir)
+    src_label_var.set(filedialog.askdirectory())
 
 def set_dst():
-    dst_dir = filedialog.askdirectory()
-    dst_label_var.set(dst_dir)
+    dst_label_var.set(filedialog.askdirectory())
 
 setup_gui()
