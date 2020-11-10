@@ -28,16 +28,20 @@ parent_drive_dir = 'Instagram'
 padding = 60
 
 def process_images():
+    global src_dir, dst_dir
     src_dir = src_label_var.get()
     dst_dir = dst_label_var.get()
+
+    if not dst_dir.endswith("\\"):
+        dst_dir += "\\"
 
     print("running...")
     print("src: " + src_dir)
     print("dst: " + dst_dir)
 
-    for root, _, files in os.walk(src_dir):
-        for filename in files:
-            process_image(root, filename)
+    for file in os.listdir(src_dir):
+        if file.endswith(".png") or file.endswith(".jpg") or file.endswith(".jpeg"):
+            process_image(src_dir, file)
             # delete_src(src_dir + filename)
 
 def process_image(dir, filename):
@@ -73,6 +77,10 @@ def save(src_img, out_img, filename):
 
     Path(dir_raw).mkdir(parents=True, exist_ok=True)
     Path(dir_processed).mkdir(parents=True, exist_ok=True)
+
+    print("saving...")
+    print("dst_dir: " + dst_dir)
+    print("processed: " + os.path.join(dir_processed, filename))
 
     # Write file
     src_img.save(os.path.join(dir_raw, filename))
