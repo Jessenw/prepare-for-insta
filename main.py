@@ -27,7 +27,7 @@ parent_drive_dir = 'Instagram'
 padding = 60
 
 def process_images():
-    global src_dir, dst_dir, padding
+    global src_dir, dst_dir, padding, padding_label_var
     src_dir = src_label_var.get()
     dst_dir = dst_label_var.get()
     padding = padding_label_var.get()
@@ -42,7 +42,6 @@ def process_images():
     for file in os.listdir(src_dir):
         if file.endswith(".png") or file.endswith(".jpg") or file.endswith(".jpeg"):
             process_image(src_dir, file)
-            # delete_src(src_dir + filename)
 
 def process_image(dir, filename):
     print('Processing: ' + filename)
@@ -71,25 +70,9 @@ def process_image(dir, filename):
 
 def save(src_img, out_img, filename):
     date = datetime.today().strftime('%Y-%m-%d')
-
-    dir_raw = os.path.join(dst_dir + date, 'raw')
-    dir_processed = os.path.join(dst_dir + date, 'processed')
-
-    Path(dir_raw).mkdir(parents=True, exist_ok=True)
+    dir_processed = dst_dir + date
     Path(dir_processed).mkdir(parents=True, exist_ok=True)
-
-    print("saving...")
-
-    # Write file
-    src_img.save(os.path.join(dir_raw, filename))
     out_img.save(os.path.join(dir_processed, filename))
-
-def delete_src(filename):
-    os.remove(filename)
-
-    # Delete folder if empty
-    if not os.listdir(src_dir):
-        os.rmdir(src_dir)
 
 def save_to_drive():
     date = datetime.today().strftime('%Y-%m-%d')
