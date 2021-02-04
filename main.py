@@ -24,7 +24,7 @@ src_dir = ''
 dst_dir = ''
 
 parent_drive_dir = 'Instagram'
-padding = 60
+padding = 100
 
 def process_images():
     global src_dir, dst_dir, padding, padding_label_var
